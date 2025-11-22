@@ -1,17 +1,43 @@
 # Define the compiler and flags
 CC = gcc
-# -Wall enables all common warnings, -g includes debug information
-CFLAGS = -Wall -g
+# CFLAGS: -Wall enables common warnings, -g includes debug information
+# NOTE: The '-m32' flag is included here to match common lab requirements 
+# for 32-bit compilation, but can be removed if your environment defaults to 64-bit 
+# and the TA does not require 32-bit.
+CFLAGS = -Wall -g -m32
 
-# The main target: Compiling the myshell executable
-# Dependencies: myshell.c and LineParser.c
-myshell: myshell.c LineParser.c
-	$(CC) $(CFLAGS) myshell.c LineParser.c -o myshell
+# External LineParser files (used by myshell)
+LINEPARSER_OBJS = LineParser.o
 
-# Target for Task 0b: Compiling the looper executable
-looper: looper.c
-	$(CC) $(CFLAGS) looper.c -o looper
+# --- Main Targets ---
 
-# A target to clean up compiled files and executables
+# Default target: builds both myshell and looper
+all: myshell looper
+
+# Target 1: Compiling the myshell executable (Task 0a)
+myshell: myshell.o $(LINEPARSER_OBJS)
+	$(CC) $(CFLAGS) -o myshell myshell.o $(LINEPARSER_OBJS)
+
+# Target 2: Compiling the looper executable (Task 0b)
+looper: Looper.o
+	$(CC) $(CFLAGS) -o looper Looper.o
+
+# --- Object File Rules ---
+
+# Rule for myshell object file
+myshell.o: myshell.c LineParser.h
+	$(CC) $(CFLAGS) -c myshell.c
+
+# Rule for LineParser object file
+LineParser.o: LineParser.c LineParser.h
+	$(CC) $(CFLAGS) -c LineParser.c
+
+# Rule for Looper object file
+Looper.o: Looper.c
+	$(CC) $(CFLAGS) -c Looper.c
+
+# --- Cleanup Rule ---
+
+# Target to clean up compiled files, executables, and object files
 clean:
-	rm -f myshell looper *.o
+	rm -f *.o myshell looper
