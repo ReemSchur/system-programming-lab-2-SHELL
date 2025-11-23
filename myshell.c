@@ -27,19 +27,34 @@ void execute(cmdLine *pCmdLine) {
     
     // --- Task 1b: Implement the internal "cd" command ---
     // This MUST happen before fork()
-    if (strcmp(pCmdLine->arguments[0], "cd") == 0) {
-        if (pCmdLine->argCount < 2 || pCmdLine->arguments[1] == NULL) {
-            // Check if there is no argument (though parseCmdLines usually provides an empty string)
-            fprintf(stderr, "cd: missing argument\n");
-        } else {
-            // chdir changes the directory of the shell's process itself
-            if (chdir(pCmdLine->arguments[1]) == -1) {
-                // Print error to stderr if chdir fails (e.g., path doesn't exist)
-                perror("chdir failed"); 
-            }
-        }
-        return; // CRITICAL: Exit the execute function without forking!
+   
+if (strcmp(pCmdLine->arguments[0], "cd") == 0) {
+    char *target_dir = NULL;
+    
+    // 1. Check for the argument
+    if (pCmdLine->argCount > 1) {
+        target_dir = pCmdLine->arguments[1];
     }
+
+    // 2. Handle missing argument or tilde
+    if (target_dir == NULL || strcmp(target_dir, "~") == 0) {
+        // If no argument is given, OR the argument is "~", use the HOME environment variable
+        target_dir = getenv("HOME");
+        
+        if (target_dir == NULL) {
+            fprintf(stderr, "cd failed: HOME environment variable not set.\n");
+            return;
+        }
+    }
+    
+    // 3. Attempt to change directory
+    if (chdir(target_dir) == -1) {
+        // Print error to stderr if chdir fails
+        perror("chdir failed"); 
+    }
+    
+    return; // CRITICAL: Exit the execute function without forking!
+}
     // --- End Task 1b ---
 
     // 1. Create a new process (child)
