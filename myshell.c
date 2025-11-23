@@ -84,7 +84,19 @@ if (strcmp(pCmdLine->arguments[0], "cd") == 0) {
     } 
 else if (pid == 0) {
         // Child Process
-        
+        if (!pCmdLine->blocking) {
+            // Assign a new Process Group ID (PGID) to the background job
+            if (setpgid(0, 0) == -1) {
+                perror("setpgid failed");
+            }
+
+            // Redirect STDIN to /dev/null to prevent the job from blocking the terminal if it requests input
+            int dev_null = open("/dev/null", O_RDONLY);
+            if (dev_null != -1) {
+                dup2(dev_null, STDIN_FILENO);
+                close(dev_null);
+            }
+        }
         // --- Task 2: I/O Redirection Implementation ---
         
         // 1. Output Redirection (>)
