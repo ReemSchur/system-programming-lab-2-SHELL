@@ -7,6 +7,7 @@
 #include <linux/limits.h>
 #include <errno.h> // Required for perror
 #include "LineParser.h" 
+#include <fcntl.h>   // Required for open() flags (O_WRONLY, O_CREAT, O_TRUNC, O_RDONLY)
 
 #define MAX_INPUT_SIZE 2048
 int g_isDebug = 0; // Global flag for debug mode (Task 1a)
@@ -64,10 +65,49 @@ if (strcmp(pCmdLine->arguments[0], "cd") == 0) {
         perror("fork failed");
         return; 
     } 
-    else if (pid == 0) {
+else if (pid == 0) {
         // Child Process
         
-        // Task 1a: Print debug info to stderr
+        // --- Task 2: I/O Redirection Implementation ---
+        
+        // 1. Output Redirection (>)
+        if (pCmdLine->outputRedirect != NULL) {
+            // Open the file for writing, create if doesn't exist, and truncate to zero length.
+            // Permissions 0644 grant read/write to user, read-only to group/others.
+            int fd_out = open(pCmdLine->outputRedirect, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (fd_out == -1) {
+                perror("open output failed");
+                _exit(1);
+            }
+            // Use dup2 to redirect stdout (file descriptor 1) to the new file (fd_out).
+            if (dup2(fd_out, STDOUT_FILENO) == -1) { // STDOUT_FILENO is 1
+                perror("dup2 output failed failed");
+                close(fd_out);
+                _exit(1);
+            }
+            close(fd_out); // Close the temporary descriptor; stdout (1) is now pointing to the file.
+        }
+
+        // 2. Input Redirection (<)
+        if (pCmdLine->inputRedirect != NULL) {
+            // Open the file for reading (O_RDONLY).
+            int fd_in = open(pCmdLine->inputRedirect, O_RDONLY);
+            if (fd_in == -1) {
+                perror("open input failed");
+                _exit(1);
+            }
+            // Use dup2 to redirect stdin (file descriptor 0) to the new file (fd_in).
+            if (dup2(fd_in, STDIN_FILENO) == -1) { // STDIN_FILENO is 0
+                perror("dup2 input failed failed");
+                close(fd_in);
+                _exit(1);
+            }
+            close(fd_in); // Close the temporary descriptor; stdin (0) is now pointing to the file.
+        }
+        
+        // --- End Task 2 I/O Redirection ---
+
+        // Task 1a: Print debug info to stderr (Do this after redirection setup)
         if (g_isDebug) {
             fprintf(stderr, "PID: %d\n", getpid());
             fprintf(stderr, "Executing command: %s\n", pCmdLine->arguments[0]);
@@ -76,10 +116,10 @@ if (strcmp(pCmdLine->arguments[0], "cd") == 0) {
         // Execute the command
         if (execvp(pCmdLine->arguments[0], pCmdLine->arguments) == -1) {
             perror("execvp failed");
-            // Task 1a requirement: Use _exit() if execvp fails
             _exit(1); 
         }
     } 
+    // ... (rest of the execute function - Parent process continues below) ...
     else {
         // Parent Process
 
