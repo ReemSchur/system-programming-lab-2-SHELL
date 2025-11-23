@@ -8,9 +8,15 @@
 #include <errno.h> // Required for perror
 #include "LineParser.h" 
 #include <fcntl.h>   // Required for open() flags (O_WRONLY, O_CREAT, O_TRUNC, O_RDONLY)
+#include <signal.h> // **חובה** ל-Task 3 (SIGSTOP, SIGCONT, SIGINT)
 
 #define MAX_INPUT_SIZE 2048
 int g_isDebug = 0; // Global flag for debug mode (Task 1a)
+
+// הצהרה על פונקציית העזר (לפני main או execute)
+int handle_signal_command(cmdLine *pCmdLine, int sig, const char *cmd_name);
+// הצהרה נוספת אם עדיין לא הוספת את הצהרת ה-pipe:
+void execute_pipe(cmdLine *pCmdLine);
 
 /**
  * @brief Executes the command specified in pCmdLine, including internal commands and process management.
@@ -57,6 +63,17 @@ if (strcmp(pCmdLine->arguments[0], "cd") == 0) {
     return; // CRITICAL: Exit the execute function without forking!
 }
     // --- End Task 1b ---
+
+// --- Task 3: Handle zzzz, kuku, blast using the Helper Function ---
+    
+    // 1. zzzz <pid> -> SIGSTOP (stop/sleep)
+    if (handle_signal_command(pCmdLine, SIGSTOP, "zzzz")) return;
+
+    // 2. kuku <pid> -> SIGCONT (wake up/continue)
+    if (handle_signal_command(pCmdLine, SIGCONT, "kuku")) return;
+    
+    // 3. blast <pid> -> SIGINT (terminate)
+    if (handle_signal_command(pCmdLine, SIGINT, "blast")) return;
 
     // 1. Create a new process (child)
     pid_t pid = fork();
@@ -131,6 +148,34 @@ else if (pid == 0) {
         }
     }
 }
+
+// --- Task 3: Helper function to handle signal commands (zzzz, kuku, blast) ---
+
+int handle_signal_command(cmdLine *pCmdLine, int sig, const char *cmd_name) {
+    // Check if the current command matches the name (e.g., "zzzz")
+    if (strcmp(pCmdLine->arguments[0], cmd_name) == 0) {
+        
+        // Ensure PID argument exists
+        if (pCmdLine->argCount < 2) {
+            fprintf(stderr, "%s: Missing process ID.\n", cmd_name);
+            return 1; // Handled the command (even if failed)
+        }
+        
+        // Convert the PID argument (string) to an integer
+        pid_t target_pid = atoi(pCmdLine->arguments[1]);
+        
+        // Send the signal using the kill system call
+        if (kill(target_pid, sig) == -1) {
+            perror("kill failed");
+        } else {
+            // Optional: print confirmation that the signal was sent
+            // fprintf(stderr, "Signal %d sent successfully to PID %d.\n", sig, target_pid);
+        }
+        return 1; // Command was handled successfully or failed internally
+    }
+    return 0; // Command was not this signal command
+}
+
 int main(int argc, char **argv) {
     // --- Task 1a: Check for -d flag and activate debug mode ---
     // argv[1] is the first argument after the program name
