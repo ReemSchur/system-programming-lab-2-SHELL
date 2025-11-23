@@ -11,6 +11,8 @@
 #include "LineParser.h" 
 
 #define MAX_INPUT_SIZE 2048
+#define READ_END 0
+#define WRITE_END 1
 int g_isDebug = 0; // Global flag for debug mode
 
 // Function declarations
