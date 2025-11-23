@@ -18,25 +18,27 @@ int g_isDebug = 0; // Global flag for debug mode (Task 1a)
 void execute(cmdLine *pCmdLine) {
     if (pCmdLine == NULL) return;
 
-    // Task 0a: Check for the internal "quit" command
+    // Check for the internal "quit" command
     if (strcmp(pCmdLine->arguments[0], "quit") == 0) {
+        // Free the current command line resources before exiting
         freeCmdLines(pCmdLine); 
         exit(0);
     }
     
     // --- Task 1b: Implement the internal "cd" command ---
+    // This MUST happen before fork()
     if (strcmp(pCmdLine->arguments[0], "cd") == 0) {
-        // chdir requires the path, which is the second argument (index 1)
-        if (pCmdLine->argCount < 2) {
+        if (pCmdLine->argCount < 2 || pCmdLine->arguments[1] == NULL) {
+            // Check if there is no argument (though parseCmdLines usually provides an empty string)
             fprintf(stderr, "cd: missing argument\n");
         } else {
-            // Check if chdir fails
+            // chdir changes the directory of the shell's process itself
             if (chdir(pCmdLine->arguments[1]) == -1) {
-                // Print error to stderr as required
+                // Print error to stderr if chdir fails (e.g., path doesn't exist)
                 perror("chdir failed"); 
             }
         }
-        return; // Internal commands MUST return without forking
+        return; // CRITICAL: Exit the execute function without forking!
     }
     // --- End Task 1b ---
 
@@ -45,7 +47,6 @@ void execute(cmdLine *pCmdLine) {
 
     if (pid == -1) {
         perror("fork failed");
-        // Do not exit the shell for a failed fork, just continue the loop
         return; 
     } 
     else if (pid == 0) {
@@ -68,16 +69,13 @@ void execute(cmdLine *pCmdLine) {
         // Parent Process
 
         // Task 1c: Implement waitpid based on blocking status
-        // pCmdLine->blocking is 1 for foreground, 0 for background (&).
         if (pCmdLine->blocking) {
-            // Wait for the specific child process (pid) to terminate
             if (waitpid(pid, NULL, 0) == -1) {
                  perror("waitpid failed");
             }
         }
     }
 }
-
 int main(int argc, char **argv) {
     // --- Task 1a: Check for -d flag and activate debug mode ---
     // argv[1] is the first argument after the program name
